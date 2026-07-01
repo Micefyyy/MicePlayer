@@ -13,7 +13,7 @@ struct HomeView: View {
                     VStack(spacing: 16) {
                         ShimmerBlock(height: UIScreen.main.bounds.height * 0.35)
                             .clipShape(RoundedRectangle(cornerRadius: 20))
-                        ShimmerBlock(height: 20, width: 140)
+                        ShimmerBlock(width: 140, height: 20)
                             .padding(.top, 8)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
@@ -22,7 +22,7 @@ struct HomeView: View {
                                 }
                             }
                         }
-                        ShimmerBlock(height: 20, width: 160)
+                        ShimmerBlock(width: 160, height: 20)
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
                                 ForEach(0..<4, id: \.self) { _ in
