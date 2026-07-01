@@ -10,7 +10,6 @@ struct HomeView: View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
                 if isLoading {
-                if isLoading {
                     VStack(spacing: 24) {
                         ProgressView()
                             .tint(.orange)
