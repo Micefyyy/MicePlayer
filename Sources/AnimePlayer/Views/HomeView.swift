@@ -10,28 +10,15 @@ struct HomeView: View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
                 if isLoading {
-                    VStack(spacing: 16) {
-                        ShimmerBlock(height: UIScreen.main.bounds.height * 0.35)
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                        ShimmerBlock(width: 140, height: 20)
-                            .padding(.top, 8)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(0..<4, id: \.self) { _ in
-                                    ShimmerBlock(width: 110, height: 165)
-                                }
-                            }
-                        }
-                        ShimmerBlock(width: 160, height: 20)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(0..<4, id: \.self) { _ in
-                                    ShimmerBlock(width: 110, height: 165)
-                                }
-                            }
-                        }
+                    VStack(spacing: 24) {
+                        ProgressView()
+                            .tint(.orange)
+                            .scaleEffect(1.5)
+                            .padding(.top, 100)
+                        Text("Loading...")
+                            .foregroundColor(.gray)
                     }
-                    .padding(.horizontal)
+                    .frame(maxWidth: .infinity)
                 } else {
                     LazyVStack(spacing: 24) {
                         if let first = trending.first {
@@ -71,7 +58,7 @@ struct HomeView: View {
                         Color(.systemGray5)
                     }
                 }
-                .frame(height: UIScreen.main.bounds.height * 0.35)
+                .frame(height: 300)
                 .clipped()
 
                 LinearGradient(
@@ -80,43 +67,38 @@ struct HomeView: View {
                     endPoint: .bottom
                 )
 
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("TRENDING #1")
-                            .font(.caption2)
-                            .fontWeight(.black)
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background(Color.orange)
-                            .clipShape(Capsule())
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("TRENDING #1")
+                        .font(.caption2)
+                        .fontWeight(.black)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.orange)
+                        .clipShape(Capsule())
                     Text(anime.displayTitle)
                         .font(.title2)
                         .fontWeight(.black)
                         .foregroundColor(.white)
                         .lineLimit(2)
-                    if let score = anime.score, let year = anime.year {
-                        HStack(spacing: 12) {
+                    HStack(spacing: 12) {
+                        if let score = anime.score {
                             Label(String(format: "%.1f", score), systemImage: "star.fill")
                                 .foregroundColor(.yellow)
                                 .font(.caption)
                                 .fontWeight(.bold)
+                        }
+                        if let year = anime.year {
                             Text("\(year)")
                                 .font(.caption)
                                 .foregroundColor(.white.opacity(0.7))
-                            if let eps = anime.episodes {
-                                Text("\(eps) eps")
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
+                        }
+                        if let eps = anime.episodes {
+                            Text("\(eps) eps")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
                         }
                     }
-                    Text(anime.synopsis ?? "")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.65))
-                        .lineLimit(2)
-                        .padding(.trailing, 40)
                 }
                 .padding()
             }
@@ -172,7 +154,7 @@ struct GlassCardView: View {
     let anime: Anime
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topLeading) {
                 AsyncImage(url: URL(string: anime.coverImageMedium ?? "")) { phase in
                     switch phase {
@@ -184,7 +166,7 @@ struct GlassCardView: View {
                         Color(.systemGray5)
                     }
                 }
-                .frame(width: 110, height: 155)
+                .frame(width: 130, height: 185)
                 .clipped()
 
                 if let score = anime.score {
@@ -198,12 +180,11 @@ struct GlassCardView: View {
                     }
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(.ultraThinMaterial)
+                    .background(Color.black.opacity(0.7))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                     .padding(6)
                 }
             }
-            .frame(width: 110, height: 155)
             .clipShape(RoundedRectangle(cornerRadius: 12))
 
             Text(anime.displayTitle)
@@ -211,40 +192,22 @@ struct GlassCardView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
                 .lineLimit(2)
-                .frame(width: 110, alignment: .leading)
+                .frame(width: 130, alignment: .leading)
 
-            if let year = anime.year {
-                Text("\(year)")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
+            HStack(spacing: 4) {
+                if let year = anime.year {
+                    Text("\(year)")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                Spacer()
+                if let eps = anime.episodes {
+                    Text("\(eps) eps")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
             }
+            .frame(width: 130)
         }
-    }
-}
-
-struct ShimmerBlock: View {
-    var width: CGFloat? = nil
-    var height: CGFloat = 20
-
-    var body: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.05))
-            .frame(width: width, height: height)
-            .frame(maxWidth: width == nil ? .infinity : nil)
-            .overlay(
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                .clear,
-                                .white.opacity(0.04),
-                                .clear
-                            ]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .rotationEffect(.degrees(30))
-            )
     }
 }

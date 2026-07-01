@@ -49,7 +49,7 @@ struct LibraryView: View {
                                     .fontWeight(.bold)
                                     .foregroundColor(.white)
                             }
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
                                 ForEach(bookmarkedAnime) { anime in
                                     NavigationLink(destination: AnimeDetailView(anime: anime)) {
                                         GlassCardView(anime: anime)

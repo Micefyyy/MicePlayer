@@ -72,7 +72,7 @@ struct DiscoverView: View {
     }
 
     private var resultsGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
             ForEach(results) { anime in
                 NavigationLink(destination: AnimeDetailView(anime: anime)) {
                     GlassCardView(anime: anime)
@@ -118,7 +118,7 @@ struct DiscoverView: View {
     }
 
     private var categoryGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
             if let items = categoryData[category] {
                 ForEach(items.prefix(12)) { anime in
                     NavigationLink(destination: AnimeDetailView(anime: anime)) {

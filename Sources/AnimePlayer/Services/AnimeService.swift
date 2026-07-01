@@ -5,7 +5,7 @@ actor AnimeService {
     private let session: URLSession
     private let baseURL: String
 
-    init(baseURL: String = "http://localhost:8000") {
+    init(baseURL: String = "http://10.0.0.211:8000") {
         self.baseURL = baseURL
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
