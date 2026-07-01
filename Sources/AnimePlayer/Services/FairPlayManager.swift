@@ -27,14 +27,11 @@ final class FairPlayManager: NSObject, AVAssetResourceLoaderDelegate {
 
     private func handleFairPlayRequest(_ loadingRequest: AVAssetResourceLoadingRequest) async {
         do {
-            guard let spcData = try await loadingRequest.streamingContentKeyRequestData(
+            let spcData = try await loadingRequest.streamingContentKeyRequestData(
                 forApp: certificateData(),
                 contentIdentifier: contentIdentifier(),
                 options: nil
-            ) else {
-                loadingRequest.finishLoading(with: FairPlayError.noSPC)
-                return
-            }
+            )
 
             let ckcData = try await requestLicense(spc: spcData)
             loadingRequest.dataRequest?.respond(with: ckcData)

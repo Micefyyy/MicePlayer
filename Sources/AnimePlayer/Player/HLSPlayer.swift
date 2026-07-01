@@ -27,8 +27,8 @@ final class HLSPlayer: ObservableObject {
 
         Task { @MainActor in
             do {
-                try await asset.load(.duration)
-                self.duration = CMTimeGetSeconds(asset.duration)
+                let dur = try await asset.load(.duration)
+                self.duration = CMTimeGetSeconds(dur)
                 self.isLoading = false
                 self.player.play()
                 self.isPlaying = true
