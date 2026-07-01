@@ -187,19 +187,33 @@ async def get_episodes(anime_id: int):
 async def get_stream(anime_id: int, episode_num: int):
     """
     Returns HLS manifest URLs for a specific episode.
-    In production these would point to the transcoded HLS files on your CDN.
+    Uses local HLS files if available, otherwise returns test stream.
     """
-    server_url = os.environ.get("STREAM_SERVER_URL", "http://localhost:8000")
+    server_url = os.environ.get("STREAM_SERVER_URL", "http://10.0.0.211:8000")
+
+    # Check if local HLS files exist
+    local_dir = CONTENT_DIR / str(anime_id) / str(episode_num)
+    has_local = local_dir.exists() and any(local_dir.rglob("*.m3u8"))
+
+    if has_local:
+        return {
+            "sources": [
+                {"quality": "360p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/360p/playlist.m3u8"},
+                {"quality": "480p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/480p/playlist.m3u8"},
+                {"quality": "720p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/720p/playlist.m3u8"},
+                {"quality": "1080p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/1080p/playlist.m3u8"},
+            ],
+            "subtitles": [
+                {"url": f"{server_url}/subs/{anime_id}/{episode_num}/en.vtt", "language": "English"}
+            ]
+        }
+
+    # Fallback: use Apple's Big Buck Bunny test stream so the player works
     return {
         "sources": [
-            {"quality": "360p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/360p/playlist.m3u8"},
-            {"quality": "480p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/480p/playlist.m3u8"},
-            {"quality": "720p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/720p/playlist.m3u8"},
-            {"quality": "1080p", "manifest_url": f"{server_url}/hls/{anime_id}/{episode_num}/1080p/playlist.m3u8"},
+            {"quality": "720p", "manifest_url": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8"},
         ],
-        "subtitles": [
-            {"url": f"{server_url}/subs/{anime_id}/{episode_num}/en.vtt", "language": "English"}
-        ]
+        "subtitles": []
     }
 
 
