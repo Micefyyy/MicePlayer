@@ -167,7 +167,7 @@ struct EpisodeRow: View {
                 if let duration = episode.duration {
                     Text("\(duration / 60):\(String(format: "%02d", duration % 60))")
                         .font(.caption2)
-                        .foregroundColor(.tertiary)
+                        .foregroundStyle(.tertiary)
                 }
             }
             Spacer()

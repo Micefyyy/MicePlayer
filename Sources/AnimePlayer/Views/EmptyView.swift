@@ -16,7 +16,7 @@ struct DownloadsView: View {
                     .foregroundColor(.secondary)
                 Text("HLS streams stream directly — nothing is stored permanently on device")
                     .font(.caption)
-                    .foregroundColor(.tertiary)
+                    .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }

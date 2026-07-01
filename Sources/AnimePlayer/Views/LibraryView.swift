@@ -58,7 +58,7 @@ struct LibraryView: View {
                                 .foregroundColor(.secondary)
                             Text("Start browsing and add anime to your library")
                                 .font(.caption)
-                                .foregroundColor(.tertiary)
+                                .foregroundStyle(.tertiary)
                         }
                         .padding(.top, 80)
                     }
