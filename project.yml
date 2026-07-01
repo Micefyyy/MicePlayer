@@ -1,0 +1,43 @@
+name: AnimePlayer
+options:
+  bundleIdPrefix: com.animeplayer
+  deploymentTarget:
+    iOS: "17.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    INFOPLIST_FILE: Sources/AnimePlayer/Info.plist
+    PRODUCT_BUNDLE_IDENTIFIER: com.animeplayer.app
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
+
+targets:
+  AnimePlayer:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/AnimePlayer
+    settings:
+      base:
+        PRODUCT_NAME: AnimePlayer
+        INFOPLIST_FILE: Sources/AnimePlayer/Info.plist
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    info:
+      path: Sources/AnimePlayer/Info.plist
+      properties:
+        UIBackgroundModes:
+          - audio
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        UIRequiredDeviceCapabilities:
+          - arm64
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        LSRequiresIPhoneOS: true

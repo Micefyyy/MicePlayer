@@ -15,9 +15,16 @@ jobs:
       - name: Set Xcode version
         run: sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
       - name: Build iOS app (debug, no signing)
         run: |
           xcodebuild build \
+            -project AnimePlayer.xcodeproj \
             -scheme AnimePlayer \
             -destination 'generic/platform=iOS' \
             -derivedDataPath ./build \
