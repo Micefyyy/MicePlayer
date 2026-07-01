@@ -76,6 +76,11 @@ def format_anime(media: dict) -> dict:
     }
 
 
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Anime iOS backend is running"}
+
+
 @app.get("/api/trending")
 async def get_trending():
     async with httpx.AsyncClient(timeout=15) as client:
