@@ -91,14 +91,28 @@ struct PlaybackView: View {
                     }
                 }
 
-                // Quality selector
+                // Audio & Quality
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Server & Quality")
+                    Text("Audio & Quality")
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.white)
 
                     HStack(spacing: 8) {
+                        Button {
+                            preferences.showDub.toggle()
+                            loadStream()
+                        } label: {
+                            Text(preferences.showDub ? "DUB" : "SUB")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(preferences.showDub ? Color.orange : Color.white.opacity(0.08))
+                                .foregroundColor(preferences.showDub ? .black : .white)
+                                .clipShape(Capsule())
+                        }
+
                         ForEach(StreamQuality.allCases, id: \.rawValue) { quality in
                             Button {
                                 preferences.preferredQuality = quality.rawValue
@@ -181,9 +195,11 @@ struct PlaybackView: View {
                     animeId: animeId,
                     episode: episodeNumber
                 )
-                guard let source = data.sources.first(where: {
+                let useDub = preferences.showDub
+                let candidates = data.sources(for: useDub)
+                guard let source = candidates.first(where: {
                     $0.quality == preferences.preferredQuality
-                }) ?? data.sources.first else { return }
+                }) ?? candidates.first else { return }
 
                 if let url = URL(string: source.manifestUrl) {
                     playerEngine.load(manifestUrl: url)

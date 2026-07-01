@@ -49,8 +49,16 @@ struct StreamSource: Codable, Hashable {
 }
 
 struct StreamingData: Codable {
-    let sources: [StreamSource]
+    let sources: [StreamSource]?
     let subtitles: [SubtitleTrack]?
+    let sub: [StreamSource]?
+    let dub: [StreamSource]?
+
+    func sources(for prefersDub: Bool) -> [StreamSource] {
+        if prefersDub, let dub = dub, !dub.isEmpty { return dub }
+        if !prefersDub, let sub = sub, !sub.isEmpty { return sub }
+        return sources ?? []
+    }
 }
 
 struct SubtitleTrack: Codable, Hashable {

@@ -224,13 +224,14 @@ async def get_stream(anime_id: int, episode_num: int):
         if slug:
             stream = await scraper.get_stream_url(slug, episode_num, client)
             if stream:
-                sources = []
-                # Master playlist: return as is (player handles variant selection)
-                sources.append({"quality": "Auto", "manifest_url": stream["manifest_url"]})
-                subs = []
-                if stream.get("subtitle_url"):
-                    subs.append({"url": stream["subtitle_url"], "language": "English"})
-                return {"sources": sources, "subtitles": subs}
+                result = {"sub": [], "dub": [], "subtitles": []}
+                if stream.get("sub"):
+                    result["sub"].append({"quality": "Auto", "manifest_url": stream["sub"]["manifest_url"]})
+                    if stream["sub"].get("subtitle_url"):
+                        result["subtitles"].append({"url": stream["sub"]["subtitle_url"], "language": "English"})
+                if stream.get("dub"):
+                    result["dub"].append({"quality": "Auto", "manifest_url": stream["dub"]["manifest_url"]})
+                return result
 
     # Fallback: test stream
     return {
