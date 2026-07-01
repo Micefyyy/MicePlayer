@@ -11,24 +11,41 @@ struct PlaybackView: View {
     @State private var episode: Episode?
     @State private var episodes: [Episode] = []
     @State private var isLoadingEpisodes = true
+    @State private var isFullscreen = false
 
     private var currentIndex: Int? {
         episodes.firstIndex(where: { $0.number == episodeNumber })
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Player
-            PlayerViewWrapper(playerEngine: playerEngine, player: playerEngine.player)
-                .frame(height: UIScreen.main.bounds.width * 9 / 16 + 40)
+        ZStack {
+            Color.black.ignoresSafeArea()
 
-            if let error = playerEngine.error {
-                errorState(error)
-            } else {
-                episodeInfo
+            VStack(spacing: 0) {
+                ZStack(alignment: .bottomTrailing) {
+                    PlayerViewWrapper(playerEngine: playerEngine, player: playerEngine.player)
+                        .frame(height: UIScreen.main.bounds.width * 9 / 16)
+
+                    Button {
+                        isFullscreen.toggle()
+                    } label: {
+                        Image(systemName: isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(8)
+                            .background(Color.black.opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .padding(8)
+                }
+
+                if let error = playerEngine.error {
+                    errorState(error)
+                } else {
+                    episodeInfo
+                }
             }
         }
-        .background(Color.black)
         .navigationTitle("Ep. \(episodeNumber)")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -36,6 +53,32 @@ struct PlaybackView: View {
             loadEpisodes()
         }
         .onDisappear { playerEngine.pause() }
+        .fullScreenCover(isPresented: $isFullscreen) {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                PlayerViewWrapper(playerEngine: playerEngine, player: playerEngine.player)
+                    .ignoresSafeArea()
+                VStack {
+                    HStack {
+                        Button {
+                            isFullscreen = false
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(Color.black.opacity(0.4))
+                                .clipShape(Circle())
+                        }
+                        .padding()
+                        Spacer()
+                    }
+                    Spacer()
+                }
+            }
+            .background(Color.black)
+            .ignoresSafeArea()
+        }
     }
 
     private var episodeInfo: some View {
@@ -196,10 +239,12 @@ struct PlaybackView: View {
                     episode: episodeNumber
                 )
                 let useDub = preferences.showDub
-                let candidates = data.sources(for: useDub)
-                guard let source = candidates.first(where: {
-                    $0.quality == preferences.preferredQuality
-                }) ?? candidates.first else { return }
+                var candidates = data.sources(for: useDub)
+                // Fallback: if chosen audio has no sources, try the other
+                if candidates.isEmpty {
+                    candidates = data.sources(for: !useDub)
+                }
+                guard let source = candidates.first else { return }
 
                 if let url = URL(string: source.manifestUrl) {
                     playerEngine.load(manifestUrl: url)

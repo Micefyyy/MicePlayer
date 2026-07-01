@@ -1,5 +1,4 @@
 import re
-import asyncio
 from urllib.parse import quote, urljoin
 
 import httpx
@@ -16,32 +15,69 @@ BASE = "https://anineko.to"
 
 # Simple in-memory cache: anime_id -> slug
 _slug_cache = {}
+_episode_count_cache: dict[str, int] = {}
+
+async def _count_episodes(slug: str, client: httpx.AsyncClient) -> int:
+    """Count unique episode numbers on an anime's watch page."""
+    if slug in _episode_count_cache:
+        return _episode_count_cache[slug]
+    try:
+        r = await client.get(f"{BASE}/watch/{slug}", headers=HEADERS, follow_redirects=True, timeout=15)
+        if r.status_code == 200:
+            count = len(set(re.findall(r"/ep-(\d+)", r.text)))
+            _episode_count_cache[slug] = count
+            return count
+    except Exception:
+        pass
+    return 0
 
 async def search_slug(title: str, client: httpx.AsyncClient) -> str | None:
-    """Search anineko for an anime by title and return its slug."""
-    clean = re.sub(r"[\(\[].*?[\)\]]", "", title).strip()
+    """Search anineko for an anime by title and return its slug.
+    Prefers exact title match, then the result with most episodes (main series).
+    """
+    clean = re.sub(r"[\(\[].*?[\)\]]", "", title).strip().lower()
     url = f"{BASE}/browser?keyword={quote(clean[:60])}"
     r = await client.get(url, headers=HEADERS, follow_redirects=True, timeout=15)
     if r.status_code != 200:
         return None
+
     soup = BeautifulSoup(r.text, "html.parser")
+    candidates: dict[str, str] = {}  # slug -> display text
+
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if href.startswith("/watch/") and "/ep-" not in href:
-            link_text = a.get_text(strip=True).lower()
-            query_lower = clean.lower()
-            if query_lower in link_text or any(
-                word in link_text for word in query_lower.split()[:3]
-            ):
-                return href.replace("/watch/", "")
-    return None
+            slug = href.replace("/watch/", "")
+            text = a.get_text(strip=True).lower()
+            # Only include if search words appear in the title
+            if any(w in text for w in clean.split()[:3]):
+                # Only store the first occurrence (which is the title text, not type badge)
+                if slug not in candidates:
+                    candidates[slug] = a.get_text(strip=True)
+
+    if not candidates:
+        return None
+
+    # Prefer exact match
+    for slug, text in candidates.items():
+        if slug.replace("-", " ") == clean or text.lower().strip() == clean:
+            return slug
+
+    # Otherwise pick the one with most episodes (main series)
+    best = None
+    best_count = 0
+    for slug in candidates:
+        count = await _count_episodes(slug, client)
+        if count > best_count:
+            best_count = count
+            best = slug
+    return best
 
 async def get_slug_for_anilist(anime_id: int, client: httpx.AsyncClient) -> str | None:
     """Get the anineko slug for an AniList anime ID, with caching."""
     if anime_id in _slug_cache:
         return _slug_cache[anime_id]
 
-    # Fetch the anime title from AniList
     query = """
     query ($id: Int) {
       Media(id: $id, type: ANIME) {
