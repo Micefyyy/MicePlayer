@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
+import scraper
 
 app = FastAPI(title="Anime HLS API")
 
@@ -158,10 +159,19 @@ async def get_anime(anime_id: int):
 @app.get("/api/anime/{anime_id}/episodes")
 async def get_episodes(anime_id: int):
     """
-    Returns episode list for an anime.
-    In production, this would come from a database or scraping service.
-    For now returns placeholder episodes 1-N where N comes from AniList.
+    Returns episode list for an anime, scraped from anineko or from AniList total count.
     """
+    async with httpx.AsyncClient(timeout=15) as client:
+        slug = await scraper.get_slug_for_anilist(anime_id, client)
+        if slug:
+            ep_list = await scraper.get_episode_list(slug, client)
+            if ep_list:
+                return [
+                    {"id": ep["number"], "number": ep["number"], "title": ep["title"], "thumbnail": None, "duration": 1440}
+                    for ep in ep_list
+                ]
+
+    # Fallback: generate from AniList total count
     query = """
     query ($id: Int) {
       Media(id: $id, type: ANIME) {
@@ -169,8 +179,8 @@ async def get_episodes(anime_id: int):
       }
     }
     """
-    async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(ANILIST_URL, json={
+    async with httpx.AsyncClient(timeout=15) as c2:
+        r = await c2.post(ANILIST_URL, json={
             "query": query,
             "variables": {"id": anime_id}
         })
@@ -187,7 +197,7 @@ async def get_episodes(anime_id: int):
 async def get_stream(anime_id: int, episode_num: int):
     """
     Returns HLS manifest URLs for a specific episode.
-    Uses local HLS files if available, otherwise returns test stream.
+    Scrapes from anineko.to, falls back to local files or test stream.
     """
     server_url = os.environ.get("STREAM_SERVER_URL", "http://10.0.0.211:8000")
 
@@ -208,10 +218,24 @@ async def get_stream(anime_id: int, episode_num: int):
             ]
         }
 
-    # Fallback: use Apple's Big Buck Bunny test stream so the player works
+    # Try scraping from anineko.to
+    async with httpx.AsyncClient(timeout=30) as client:
+        slug = await scraper.get_slug_for_anilist(anime_id, client)
+        if slug:
+            stream = await scraper.get_stream_url(slug, episode_num, client)
+            if stream:
+                sources = []
+                # Master playlist: return as is (player handles variant selection)
+                sources.append({"quality": "Auto", "manifest_url": stream["manifest_url"]})
+                subs = []
+                if stream.get("subtitle_url"):
+                    subs.append({"url": stream["subtitle_url"], "language": "English"})
+                return {"sources": sources, "subtitles": subs}
+
+    # Fallback: test stream
     return {
         "sources": [
-            {"quality": "720p", "manifest_url": "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8"},
+            {"quality": "720p", "manifest_url": "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"},
         ],
         "subtitles": []
     }
