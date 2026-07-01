@@ -34,7 +34,7 @@ query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort]) {
       episodes duration status
       genres
       averageScore
-      season year
+      season seasonYear
       studios { nodes { name } }
     }
   }
@@ -50,7 +50,7 @@ query ($search: String) {
       episodes duration status
       genres
       averageScore
-      season year
+      season seasonYear
     }
   }
 }
@@ -71,7 +71,7 @@ def format_anime(media: dict) -> dict:
         "status": media.get("status"),
         "genres": media.get("genres"),
         "studio": studios[0].get("name") if studios else None,
-        "year": media.get("year"),
+        "year": media.get("seasonYear"),
         "season": media.get("season"),
     }
 
@@ -90,6 +90,18 @@ async def get_trending():
 
 @app.get("/api/seasonal")
 async def get_seasonal():
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(ANILIST_URL, json={
+            "query": ANIQUERY,
+            "variables": {"page": 1, "perPage": 20, "type": "ANIME", "sort": ["POPULARITY_DESC"]}
+        })
+        r.raise_for_status()
+        data = r.json()
+    return [format_anime(m) for m in data.get("data", {}).get("Page", {}).get("media", [])]
+
+
+@app.get("/api/popular")
+async def get_popular():
     async with httpx.AsyncClient(timeout=15) as client:
         r = await client.post(ANILIST_URL, json={
             "query": ANIQUERY,
@@ -119,8 +131,8 @@ async def get_anime(anime_id: int):
       Media(id: $id, type: ANIME) {
         id title { romaji english }
         coverImage { large extraLarge }
-        episodes duration status description(format: PLAIN)
-        genres averageScore season year
+        episodes duration status description
+        genres averageScore season seasonYear
         studios { nodes { name } }
       }
     }

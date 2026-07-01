@@ -57,3 +57,13 @@ struct SubtitleTrack: Codable, Hashable {
     let url: String
     let language: String
 }
+
+struct WatchProgress: Identifiable, Codable {
+    let animeId: Int
+    let animeTitle: String
+    let animeImage: String
+    let episodeNumber: Int
+    let updatedAt: Date
+
+    var id: String { "\(animeId)-\(episodeNumber)" }
+}

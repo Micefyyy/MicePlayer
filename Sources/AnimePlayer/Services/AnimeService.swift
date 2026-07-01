@@ -5,7 +5,7 @@ actor AnimeService {
     private let session: URLSession
     private let baseURL: String
 
-    init(baseURL: String = "https://your-server.com") {
+    init(baseURL: String = "http://localhost:8000") {
         self.baseURL = baseURL
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15
@@ -19,6 +19,10 @@ actor AnimeService {
 
     func fetchSeasonal() async throws -> [Anime] {
         try await get("/api/seasonal")
+    }
+
+    func fetchPopular() async throws -> [Anime] {
+        try await get("/api/popular")
     }
 
     func searchAnime(query: String) async throws -> [Anime] {

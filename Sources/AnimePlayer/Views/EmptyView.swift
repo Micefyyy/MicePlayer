@@ -1,27 +1,25 @@
 import SwiftUI
 
-import SwiftUI
-
-import SwiftUI
-
 struct DownloadsView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
                 Image(systemName: "arrow.down.circle")
                     .font(.system(size: 40))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.gray)
                 Text("No downloads")
                     .font(.headline)
-                    .foregroundColor(.secondary)
-                Text("HLS streams stream directly — nothing is stored permanently on device")
+                    .foregroundColor(.gray)
+                Text("Stream directly — nothing is stored on device")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundColor(.gray.opacity(0.6))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
             .padding(.top, 80)
             .navigationTitle("Downloads")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
         }
     }
 }

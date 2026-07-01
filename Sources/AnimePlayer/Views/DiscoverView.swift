@@ -21,48 +21,61 @@ struct DiscoverView: View {
                 VStack(spacing: 16) {
                     searchBar
 
-                    if !results.isEmpty && hasSearched {
-                        resultsGrid
-                    } else if hasSearched {
-                        noResultsView
-                    }
-
-                    if !hasSearched {
+                    if hasSearched {
+                        if results.isEmpty && !isLoading {
+                            noResultsView
+                        } else {
+                            resultsGrid
+                        }
+                    } else {
                         categoryPicker
-                        categoryGrid
+                        if catLoading {
+                            ProgressView()
+                                .tint(.orange)
+                                .padding(.top, 40)
+                        } else {
+                            categoryGrid
+                        }
                     }
                 }
                 .padding(.horizontal)
             }
-            .background(Color(.systemBackground))
+            .background(Color.black)
             .navigationTitle("Discover")
             .task { await loadCategories() }
         }
     }
 
     private var searchBar: some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
             TextField("Search anime...", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
+                .foregroundColor(.white)
                 .onSubmit { performSearch() }
             if !searchQuery.isEmpty {
-                Button { searchQuery = ""; results = []; hasSearched = false }
-                    label: { Image(systemName: "xmark.circle.fill").foregroundColor(.secondary) }
+                Button {
+                    searchQuery = ""
+                    results = []
+                    hasSearched = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
             }
         }
         .padding(12)
-        .background(Color(.systemGray6))
+        .background(Color.white.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var resultsGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
             ForEach(results) { anime in
                 NavigationLink(destination: AnimeDetailView(anime: anime)) {
-                    AnimeCardView(anime: anime)
+                    GlassCardView(anime: anime)
                 }
                 .buttonStyle(.plain)
             }
@@ -73,10 +86,13 @@ struct DiscoverView: View {
         VStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 40))
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
             Text("No results found")
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
+            Text("Try a different search term")
+                .font(.caption)
+                .foregroundColor(.gray.opacity(0.6))
         }
         .padding(.top, 60)
     }
@@ -93,28 +109,22 @@ struct DiscoverView: View {
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                         .background(category == cat ? Color.orange : Color.clear)
-                        .foregroundColor(category == cat ? .white : .secondary)
+                        .foregroundColor(category == cat ? .black : .gray)
                 }
             }
         }
-        .background(Color(.systemGray6))
+        .background(Color.white.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var categoryGrid: some View {
-        Group {
-            if catLoading {
-                ProgressView().padding(.top, 40)
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
-                    if let items = categoryData[category] {
-                        ForEach(items.prefix(12)) { anime in
-                            NavigationLink(destination: AnimeDetailView(anime: anime)) {
-                                AnimeCardView(anime: anime)
-                            }
-                            .buttonStyle(.plain)
-                        }
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+            if let items = categoryData[category] {
+                ForEach(items.prefix(12)) { anime in
+                    NavigationLink(destination: AnimeDetailView(anime: anime)) {
+                        GlassCardView(anime: anime)
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -134,8 +144,9 @@ struct DiscoverView: View {
         catLoading = true
         async let t = AnimeService.shared.fetchTrending()
         async let s = AnimeService.shared.fetchSeasonal()
-        let (trending, seasonal) = await ((try? t) ?? [], (try? s) ?? [])
-        categoryData = [.trending: trending, .seasonal: seasonal, .topRated: []]
+        async let p = AnimeService.shared.fetchPopular()
+        let (trending, seasonal, popular) = await ((try? t) ?? [], (try? s) ?? [], (try? p) ?? [])
+        categoryData = [.trending: trending, .seasonal: seasonal, .topRated: popular]
         catLoading = false
     }
 }

@@ -10,9 +10,15 @@ struct LibraryView: View {
                 VStack(spacing: 24) {
                     if !continueWatching.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Label("Continue Watching", systemImage: "play.fill")
-                                .font(.headline)
-                                .fontWeight(.bold)
+                            HStack {
+                                Image(systemName: "play.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Continue Watching")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                            }
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(continueWatching) { item in
@@ -34,13 +40,19 @@ struct LibraryView: View {
 
                     if !bookmarkedAnime.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Label("Bookmarks", systemImage: "bookmark.fill")
-                                .font(.headline)
-                                .fontWeight(.bold)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
+                            HStack {
+                                Image(systemName: "bookmark.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Bookmarks")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                            }
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
                                 ForEach(bookmarkedAnime) { anime in
                                     NavigationLink(destination: AnimeDetailView(anime: anime)) {
-                                        AnimeCardView(anime: anime)
+                                        GlassCardView(anime: anime)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -52,33 +64,23 @@ struct LibraryView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "bookmark")
                                 .font(.system(size: 40))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.gray)
                             Text("No bookmarks yet")
                                 .font(.headline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.gray)
                             Text("Start browsing and add anime to your library")
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .foregroundColor(.gray.opacity(0.6))
                         }
                         .padding(.top, 80)
                     }
                 }
                 .padding(.horizontal)
             }
-            .background(Color(.systemBackground))
+            .background(Color.black)
             .navigationTitle("Library")
         }
     }
-}
-
-struct WatchProgress: Identifiable, Codable {
-    let animeId: Int
-    let animeTitle: String
-    let animeImage: String
-    let episodeNumber: Int
-    let updatedAt: Date
-
-    var id: String { "\(animeId)-\(episodeNumber)" }
 }
 
 struct ContinueCard: View {
@@ -86,32 +88,31 @@ struct ContinueCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            AsyncImage(url: URL(string: progress.animeImage)) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().aspectRatio(contentMode: .fill)
-                default:
-                    Color(.systemGray5)
+            ZStack {
+                AsyncImage(url: URL(string: progress.animeImage)) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    default:
+                        Color(.systemGray5)
+                    }
                 }
-            }
-            .frame(width: 150, height: 85)
-            .clipped()
-            .overlay {
-                ZStack {
-                    Color.black.opacity(0.3)
-                    Image(systemName: "play.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                }
+                .frame(width: 140, height: 80)
+                .clipped()
+
+                Color.black.opacity(0.3)
+                Image(systemName: "play.circle.fill")
+                    .font(.title3)
+                    .foregroundColor(.white)
             }
             .clipShape(RoundedRectangle(cornerRadius: 10))
 
             Text(progress.animeTitle)
                 .font(.caption)
                 .fontWeight(.semibold)
+                .foregroundColor(.white)
                 .lineLimit(1)
-                .frame(width: 150, alignment: .leading)
-                .foregroundColor(.primary)
+                .frame(width: 140, alignment: .leading)
 
             Text("Ep. \(progress.episodeNumber)")
                 .font(.caption2)
