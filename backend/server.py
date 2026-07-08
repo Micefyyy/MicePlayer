@@ -339,6 +339,10 @@ async def serve_hls(anime_id: int, episode_num: int, quality: str, file_name: st
 
 
 _proxy_client = None
+_segment_cache = {}
+_CACHE_MAX = 200
+_CACHE_SIZE = 0
+_CACHE_MAX_BYTES = 150 * 1024 * 1024  # 150MB
 
 def get_proxy_client():
     global _proxy_client
@@ -353,6 +357,16 @@ async def proxy_stream(request: Request, url: str):
         raise HTTPException(400, "Missing url parameter")
 
     client = get_proxy_client()
+    is_ts = ".ts" in url or "video/mp2t" in url
+
+    # Serve from cache if available
+    if is_ts and url in _segment_cache:
+        cached = _segment_cache[url]
+        return Response(
+            content=cached,
+            media_type="video/mp2t",
+            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"},
+        )
 
     try:
         r = await client.get(url, headers=scraper.HEADERS)
@@ -390,23 +404,20 @@ async def proxy_stream(request: Request, url: str):
             headers={"Access-Control-Allow-Origin": "*"},
         )
 
-    # Stream .ts segments instead of buffering full response in memory
-    async def stream_segments():
-        async with client.stream("GET", url, headers=scraper.HEADERS) as upstream:
-            async for chunk in upstream.aiter_bytes(65536):
-                yield chunk
+    # Cache .ts segments for instant seek
+    data = r.content
+    if is_ts:
+        global _CACHE_SIZE
+        _segment_cache[url] = data
+        _CACHE_SIZE += len(data)
+        while len(_segment_cache) > _CACHE_MAX or _CACHE_SIZE > _CACHE_MAX_BYTES:
+            oldest_url = next(iter(_segment_cache))
+            _CACHE_SIZE -= len(_segment_cache.pop(oldest_url))
 
-    return StreamingResponse(
-        stream_segments(),
-        media_type=content_type or "application/octet-stream",
-        headers={"Access-Control-Allow-Origin": "*"},
-    )
-
-    # Otherwise stream raw (for .ts segments, subtitles, etc.)
     return Response(
-        content=r.content,
+        content=data,
         media_type=content_type or "application/octet-stream",
-        headers={"Access-Control-Allow-Origin": "*"},
+        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=3600"},
     )
 
 

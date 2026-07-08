@@ -511,12 +511,14 @@ function switchAudio(showDub) {
     if (window.Hls && Hls.isSupported()) {
     hlsInstance = new Hls({
         startFragPrefetch: true,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120,
+        maxBufferLength: 90,
+        maxMaxBufferLength: 180,
         startLevel: -1,
         enableWorker: true,
         lowLatencyMode: false,
         backBufferLength: 30,
+        maxBufferSize: 60 * 1000 * 1000,
+        highBufferWatchdogPeriod: 1,
     });
         hlsInstance.loadSource(proxyUrl);
         hlsInstance.attachMedia(video);
