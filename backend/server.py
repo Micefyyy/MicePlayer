@@ -88,7 +88,8 @@ def format_anime(media: dict) -> dict:
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "message": "Anime iOS backend is running"}
+    from starlette.responses import RedirectResponse
+    return RedirectResponse(url="/web/")
 
 
 @app.get("/api/trending")
