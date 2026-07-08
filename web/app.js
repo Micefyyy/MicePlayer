@@ -34,6 +34,11 @@ function showPage(name) {
 }
 
 function goHome() {
+    destroyPlayer();
+    currentAnime = null;
+    playerEpisodes = [];
+    streamDataCache = {};
+    currentEpisode = null;
     showPage("home");
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "home"));
 }
