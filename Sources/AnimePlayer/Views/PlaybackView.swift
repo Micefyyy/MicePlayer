@@ -358,8 +358,7 @@ struct PlaybackView: View {
     }
 
     private func observePlaybackEnd() {
-        playerEngine.onPlaybackEnded = { [weak self] in
-            guard let self = self else { return }
+        playerEngine.onPlaybackEnded = {
             DispatchQueue.main.async {
                 if self.preferences.autoPlay, let idx = self.currentIndex, idx < self.episodes.count - 1 {
                     self.showAutoPlayOverlay = true
