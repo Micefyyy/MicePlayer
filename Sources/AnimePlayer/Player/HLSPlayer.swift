@@ -10,8 +10,12 @@ final class HLSPlayer: ObservableObject {
     @Published var isLoading = true
     @Published var error: String?
 
+    var onPlaybackEnded: (() -> Void)?
+
     private var timeObserver: Any?
     private var cancellables = Set<AnyCancellable>()
+    private var hasReachedEnd = false
+    private var fairPlayManager: FairPlayManager?
 
     init() {
         self.player = AVPlayer()
@@ -21,7 +25,21 @@ final class HLSPlayer: ObservableObject {
     func load(manifestUrl: URL) {
         isLoading = true
         error = nil
-        let asset = AVAsset(url: manifestUrl)
+        hasReachedEnd = false
+
+        let asset = AVURLAsset(url: manifestUrl)
+
+        if manifestUrl.scheme == "skd" {
+            let fpsManager = FairPlayManager(
+                licenseURL: URL(string: "https://your-fairplay-license-server.com/license")!,
+                certificateURL: URL(string: "https://your-fairplay-license-server.com/cert")!
+            )
+            self.fairPlayManager = fpsManager
+            asset.resourceLoader.setDelegate(fpsManager, queue: DispatchQueue(label: "com.animeplayer.fairplay"))
+        } else {
+            self.fairPlayManager = nil
+        }
+
         let playerItem = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: playerItem)
 
@@ -65,7 +83,14 @@ final class HLSPlayer: ObservableObject {
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            self?.currentTime = CMTimeGetSeconds(time)
+            guard let self = self else { return }
+            let seconds = CMTimeGetSeconds(time)
+            self.currentTime = seconds
+
+            if self.duration > 0 && seconds >= self.duration - 1.0 && !self.hasReachedEnd {
+                self.hasReachedEnd = true
+                self.onPlaybackEnded?()
+            }
         }
 
         player.publisher(for: \.timeControlStatus)
@@ -91,5 +116,6 @@ final class HLSPlayer: ObservableObject {
         if let observer = timeObserver {
             player.removeTimeObserver(observer)
         }
+        fairPlayManager = nil
     }
 }

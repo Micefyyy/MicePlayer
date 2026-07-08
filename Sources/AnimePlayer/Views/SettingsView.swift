@@ -14,12 +14,6 @@ struct SettingsView: View {
                         Text("360p").tag("360p")
                     }
 
-                    Picker("Streaming Source", selection: $preferences.preferredSource) {
-                        Text("Gogoanime").tag("gogoanime")
-                        Text("Zoro").tag("zoro")
-                        Text("9anime").tag("9anime")
-                    }
-
                     Toggle("Auto-play next episode", isOn: $preferences.autoPlay)
                 }
 

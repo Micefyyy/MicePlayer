@@ -156,7 +156,7 @@ struct GlassCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .topLeading) {
-                AsyncImage(url: URL(string: anime.coverImageMedium ?? "")) { phase in
+                AsyncImage(url: URL(string: anime.coverImageLarge ?? anime.coverImageMedium ?? "")) { phase in
                     switch phase {
                     case .success(let image):
                         image
@@ -166,7 +166,7 @@ struct GlassCardView: View {
                         Color(.systemGray5)
                     }
                 }
-                .frame(width: 130, height: 185)
+                .frame(width: 160, height: 225)
                 .clipped()
 
                 if let score = anime.score {
@@ -192,7 +192,7 @@ struct GlassCardView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
                 .lineLimit(2)
-                .frame(width: 130, alignment: .leading)
+                .frame(width: 160, alignment: .leading)
 
             HStack(spacing: 4) {
                 if let year = anime.year {
@@ -207,7 +207,7 @@ struct GlassCardView: View {
                         .foregroundColor(.gray)
                 }
             }
-            .frame(width: 130)
+            .frame(width: 160)
         }
     }
 }

@@ -3,12 +3,17 @@ import SwiftUI
 struct LibraryView: View {
     @State private var bookmarkedAnime: [Anime] = []
     @State private var continueWatching: [WatchProgress] = []
+    @State private var isLoading = true
 
     var body: some View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
-                    if !continueWatching.isEmpty {
+                    if isLoading {
+                        ProgressView()
+                            .tint(.orange)
+                            .padding(.top, 80)
+                    } else if !continueWatching.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
                             HStack {
                                 Image(systemName: "play.fill")
@@ -26,7 +31,8 @@ struct LibraryView: View {
                                             destination: PlaybackView(
                                                 animeId: item.animeId,
                                                 episodeNumber: item.episodeNumber,
-                                                title: item.animeTitle
+                                                title: item.animeTitle,
+                                                animeImage: item.animeImage
                                             )
                                         ) {
                                             ContinueCard(progress: item)
@@ -79,6 +85,17 @@ struct LibraryView: View {
             }
             .background(Color.black)
             .navigationTitle("Library")
+            .onAppear {
+                bookmarkedAnime = PersistenceManager.shared.loadBookmarks()
+                continueWatching = PersistenceManager.shared.loadProgress()
+                isLoading = false
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name(" bookmarksChanged"))) { _ in
+                bookmarkedAnime = PersistenceManager.shared.loadBookmarks()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("progressUpdated"))) { _ in
+                continueWatching = PersistenceManager.shared.loadProgress()
+            }
         }
     }
 }

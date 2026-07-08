@@ -22,7 +22,10 @@ struct AnimeDetailView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadData() }
-        .onAppear { isBookmarked = UserDefaults.standard.data(forKey: "bookmarks") != nil }
+        .onAppear {
+            isBookmarked = PersistenceManager.shared.isBookmarked(anime.id)
+            lastWatchedEp = PersistenceManager.shared.getLastWatchedEpisode(animeId: anime.id)
+        }
     }
 
     private var heroSection: some View {
@@ -108,7 +111,8 @@ struct AnimeDetailView: View {
             NavigationLink(destination: PlaybackView(
                 animeId: anime.id,
                 episodeNumber: lastWatchedEp ?? 1,
-                title: "\(anime.displayTitle)"
+                title: "\(anime.displayTitle)",
+                animeImage: anime.coverImageMedium
             )) {
                 HStack {
                     Image(systemName: "play.fill")
@@ -125,7 +129,7 @@ struct AnimeDetailView: View {
             .buttonStyle(.plain)
 
             Button {
-                isBookmarked.toggle()
+                isBookmarked = PersistenceManager.shared.toggleBookmark(anime)
             } label: {
                 Image(systemName: isBookmarked ? "heart.fill" : "heart")
                     .font(.title3)
@@ -207,11 +211,12 @@ struct AnimeDetailView: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(episodes) { ep in
-                        NavigationLink(destination: PlaybackView(
-                            animeId: anime.id,
-                            episodeNumber: ep.number,
-                            title: "\(anime.displayTitle)"
-                        )) {
+                            NavigationLink(destination: PlaybackView(
+                                animeId: anime.id,
+                                episodeNumber: ep.number,
+                                title: "\(anime.displayTitle)",
+                                animeImage: anime.coverImageMedium
+                            )) {
                             EpisodeRow(episode: ep, isCurrent: lastWatchedEp == ep.number)
                         }
                         .buttonStyle(.plain)

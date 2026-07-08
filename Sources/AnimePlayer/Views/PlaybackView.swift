@@ -5,13 +5,17 @@ struct PlaybackView: View {
     let animeId: Int
     let episodeNumber: Int
     let title: String
+    var animeImage: String? = nil
 
     @StateObject private var playerEngine = HLSPlayer()
     @EnvironmentObject private var preferences: Preferences
-    @State private var episode: Episode?
     @State private var episodes: [Episode] = []
     @State private var isLoadingEpisodes = true
     @State private var isFullscreen = false
+    @State private var hasSavedProgress = false
+    @State private var showAutoPlayOverlay = false
+    @State private var navigateToNext = false
+    @State private var nextEpisodeNumber = 0
 
     private var currentIndex: Int? {
         episodes.firstIndex(where: { $0.number == episodeNumber })
@@ -79,21 +83,52 @@ struct PlaybackView: View {
             .background(Color.black)
             .ignoresSafeArea()
         }
+        .overlay {
+            if showAutoPlayOverlay {
+                autoPlayOverlay
+            }
+        }
+        .background(
+            NavigationLink(
+                destination: nextEpisodeNumber > 0 ? PlaybackView(
+                    animeId: animeId,
+                    episodeNumber: nextEpisodeNumber,
+                    title: title,
+                    animeImage: animeImage
+                ) : nil,
+                isActive: $navigateToNext
+            ) { EmptyView() }
+            .hidden()
+        )
     }
 
     private var episodeInfo: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
-                // Episode title + nav
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Episode \(episodeNumber)")
-                        .font(.title3)
-                        .fontWeight(.black)
-                        .foregroundColor(.white)
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Episode \(episodeNumber)")
+                            .font(.title3)
+                            .fontWeight(.black)
+                            .foregroundColor(.white)
+                        Text(title)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    if DownloadManager.shared.isDownloaded(animeId: animeId, episodeNumber: episodeNumber) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    } else {
+                        Button {
+                            downloadCurrentEpisode()
+                        } label: {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.title3)
+                                .foregroundColor(.orange)
+                        }
+                    }
                 }
 
                 // Prev / Next buttons
@@ -102,7 +137,8 @@ struct PlaybackView: View {
                         NavigationLink(destination: PlaybackView(
                             animeId: animeId,
                             episodeNumber: episodes[idx - 1].number,
-                            title: title
+                            title: title,
+                            animeImage: animeImage
                         )) {
                             Label("Previous", systemImage: "chevron.left")
                                 .font(.subheadline)
@@ -119,7 +155,8 @@ struct PlaybackView: View {
                         NavigationLink(destination: PlaybackView(
                             animeId: animeId,
                             episodeNumber: episodes[idx + 1].number,
-                            title: title
+                            title: title,
+                            animeImage: animeImage
                         )) {
                             Label("Next", systemImage: "chevron.right")
                                 .font(.subheadline)
@@ -194,7 +231,8 @@ struct PlaybackView: View {
                             NavigationLink(destination: PlaybackView(
                                 animeId: animeId,
                                 episodeNumber: ep.number,
-                                title: title
+                                title: title,
+                                animeImage: animeImage
                             )) {
                                 EpisodeRowCompact(episode: ep, isCurrent: ep.number == episodeNumber)
                             }
@@ -231,6 +269,57 @@ struct PlaybackView: View {
         }
     }
 
+    private var autoPlayOverlay: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            VStack(spacing: 12) {
+                if let idx = currentIndex, idx < episodes.count - 1 {
+                    Text("Up Next")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Text("Episode \(episodes[idx + 1].number)")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    if let epTitle = episodes[idx + 1].title {
+                        Text(epTitle)
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    HStack(spacing: 12) {
+                        Button("Cancel") {
+                            showAutoPlayOverlay = false
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .foregroundColor(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                        Button("Play Now") {
+                            showAutoPlayOverlay = false
+                            nextEpisodeNumber = episodes[idx + 1].number
+                            navigateToNext = true
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(Color.orange)
+                        .foregroundColor(.black)
+                        .fontWeight(.bold)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+            }
+            .padding(24)
+            .background(Color.black.opacity(0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(.horizontal, 32)
+            Spacer()
+        }
+        .background(Color.black.opacity(0.5))
+    }
+
     private func loadStream() {
         Task {
             do {
@@ -240,7 +329,6 @@ struct PlaybackView: View {
                 )
                 let useDub = preferences.showDub
                 var candidates = data.sources(for: useDub)
-                // Fallback: if chosen audio has no sources, try the other
                 if candidates.isEmpty {
                     candidates = data.sources(for: !useDub)
                 }
@@ -248,9 +336,34 @@ struct PlaybackView: View {
 
                 if let url = URL(string: source.manifestUrl) {
                     playerEngine.load(manifestUrl: url)
+                    saveProgress()
+                    observePlaybackEnd()
                 }
             } catch {
                 playerEngine.error = "Failed to load stream"
+            }
+        }
+    }
+
+    private func saveProgress() {
+        guard !hasSavedProgress else { return }
+        hasSavedProgress = true
+        PersistenceManager.shared.updateProgress(
+            animeId: animeId,
+            animeTitle: title,
+            animeImage: animeImage ?? "",
+            episodeNumber: episodeNumber
+        )
+        NotificationCenter.default.post(name: Notification.Name("progressUpdated"), object: nil)
+    }
+
+    private func observePlaybackEnd() {
+        playerEngine.onPlaybackEnded = { [weak self] in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if self.preferences.autoPlay, let idx = self.currentIndex, idx < self.episodes.count - 1 {
+                    self.showAutoPlayOverlay = true
+                }
             }
         }
     }
@@ -259,6 +372,33 @@ struct PlaybackView: View {
         Task {
             episodes = (try? await AnimeService.shared.getEpisodes(animeId: animeId)) ?? []
             isLoadingEpisodes = false
+        }
+    }
+
+    private func downloadCurrentEpisode() {
+        Task {
+            do {
+                let data = try await AnimeService.shared.getStreamingSources(
+                    animeId: animeId,
+                    episode: episodeNumber
+                )
+                let useDub = preferences.showDub
+                var candidates = data.sources(for: useDub)
+                if candidates.isEmpty {
+                    candidates = data.sources(for: !useDub)
+                }
+                guard let source = candidates.first else { return }
+
+                DownloadManager.shared.download(
+                    animeId: animeId,
+                    animeTitle: title,
+                    animeImage: animeImage ?? "",
+                    episodeNumber: episodeNumber,
+                    manifestUrl: source.manifestUrl
+                )
+            } catch {
+                playerEngine.error = "Failed to start download"
+            }
         }
     }
 }
