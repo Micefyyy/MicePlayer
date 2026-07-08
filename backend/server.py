@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from urllib.parse import urljoin, quote
 from fastapi import FastAPI, HTTPException, Request
+from starlette.responses import Response, StreamingResponse
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -337,23 +338,26 @@ async def serve_hls(anime_id: int, episode_num: int, quality: str, file_name: st
     }.get(file_path.suffix, "application/octet-stream"))
 
 
+_proxy_client = None
+
+def get_proxy_client():
+    global _proxy_client
+    if _proxy_client is None:
+        _proxy_client = httpx.AsyncClient(timeout=30, follow_redirects=True, limits=httpx.Limits(max_connections=50, max_keepalive_connections=20))
+    return _proxy_client
+
+
 @app.api_route("/proxy", methods=["GET", "HEAD"])
 async def proxy_stream(request: Request, url: str):
-    """
-    Proxy HLS streams to bypass CORS.
-    For m3u8 files: rewrites internal URLs so child segments/ playlists also go through the proxy.
-    For .ts segments: streams raw bytes.
-    """
     if not url:
         raise HTTPException(400, "Missing url parameter")
 
-    server_url = os.environ.get("STREAM_SERVER_URL", "http://localhost:8000")
+    client = get_proxy_client()
 
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        try:
-            r = await client.get(url, headers=scraper.HEADERS)
-        except Exception as e:
-            raise HTTPException(502, f"Upstream error: {e}")
+    try:
+        r = await client.get(url, headers=scraper.HEADERS)
+    except Exception as e:
+        raise HTTPException(502, f"Upstream error: {e}")
 
     if r.status_code != 200:
         raise HTTPException(r.status_code, "Upstream returned error")
@@ -372,11 +376,10 @@ async def proxy_stream(request: Request, url: str):
                 absolute = urljoin(base_url, stripped)
                 rewritten.append(f"/proxy?url={quote(absolute, safe='')}")
             elif stripped.startswith("#EXT-X-MAP:URI="):
-                # Handle init segment URIs
                 uri_match = re.search(r'URI="([^"]+)"', stripped)
                 if uri_match:
                     absolute = urljoin(base_url, uri_match.group(1))
-                    rewritten.append(stripped.replace(uri_match.group(1), f"/proxy?url={quote(absolute, safe='')}"))
+                    rewritten.append(stripped.replace(uri_match.group(1), f"/proxy?url={quote(absolute, safe='')}")
                 else:
                     rewritten.append(stripped)
             else:
@@ -386,6 +389,18 @@ async def proxy_stream(request: Request, url: str):
             media_type="application/vnd.apple.mpegurl",
             headers={"Access-Control-Allow-Origin": "*"},
         )
+
+    # Stream .ts segments instead of buffering full response in memory
+    async def stream_segments():
+        async with client.stream("GET", url, headers=scraper.HEADERS) as upstream:
+            async for chunk in upstream.aiter_bytes(65536):
+                yield chunk
+
+    return StreamingResponse(
+        stream_segments(),
+        media_type=content_type or "application/octet-stream",
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
     # Otherwise stream raw (for .ts segments, subtitles, etc.)
     return Response(

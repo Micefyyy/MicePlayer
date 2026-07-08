@@ -294,8 +294,8 @@ function setupPlyr(video) {
             controls: ['play-large','play','progress','current-time','duration','mute','volume','settings','fullscreen'],
             settings: ['speed'],
             speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-            tooltips: { controls: true, seek: true },
-            keyboard: { focused: true, global: true },
+            tooltips: { controls: false, seek: false },
+            keyboard: { focused: true, global: false },
         });
     } catch(e) { console.error("Plyr error:", e); }
 }
@@ -509,7 +509,15 @@ function switchAudio(showDub) {
     if (hlsInstance) { try { hlsInstance.destroy(); } catch(e) {} hlsInstance = null; }
     const proxyUrl = getSourceUrl(url);
     if (window.Hls && Hls.isSupported()) {
-        hlsInstance = new Hls({ startFragPrefetch: true, maxBufferLength: 30 });
+    hlsInstance = new Hls({
+        startFragPrefetch: true,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120,
+        startLevel: -1,
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+    });
         hlsInstance.loadSource(proxyUrl);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { video.play().catch(() => {}); });
