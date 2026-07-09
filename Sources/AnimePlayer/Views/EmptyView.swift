@@ -1,7 +1,10 @@
 import SwiftUI
+import AVKit
 
 struct DownloadsView: View {
     @StateObject private var downloadManager = DownloadManager.shared
+    @State private var selectedItem: DownloadItem?
+    @State private var showPlayer = false
 
     var body: some View {
         NavigationStack {
@@ -14,6 +17,11 @@ struct DownloadsView: View {
             }
             .background(Color.black)
             .navigationTitle("Downloads")
+            .fullScreenCover(isPresented: $showPlayer) {
+                if let item = selectedItem, let url = DownloadManager.shared.localManifestUrl(animeId: item.animeId, episodeNumber: item.episodeNumber) {
+                    LocalPlayerView(url: url, title: "\(item.animeTitle) - Ep. \(item.episodeNumber)")
+                }
+            }
         }
     }
 
@@ -39,7 +47,12 @@ struct DownloadsView: View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 12) {
                 ForEach(downloadManager.downloads) { item in
-                    DownloadRow(item: item, manager: downloadManager)
+                    DownloadRow(item: item, manager: downloadManager, onTap: {
+                        if item.status == .completed {
+                            selectedItem = item
+                            showPlayer = true
+                        }
+                    })
                 }
             }
             .padding(.horizontal)
@@ -51,81 +64,120 @@ struct DownloadsView: View {
 struct DownloadRow: View {
     let item: DownloadItem
     @ObservedObject var manager: DownloadManager
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                AsyncImage(url: URL(string: item.animeImage)) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Color(.systemGray5)
+        Button { onTap?() } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    AsyncImage(url: URL(string: item.animeImage)) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            Color(.systemGray5)
+                        }
+                    }
+                    .frame(width: 80, height: 50)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    if item.status == .downloading {
+                        Color.black.opacity(0.4)
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.7)
+                    } else if item.status == .completed {
+                        Color.black.opacity(0.3)
+                        Image(systemName: "play.fill")
+                            .foregroundColor(.white)
+                            .font(.caption)
                     }
                 }
-                .frame(width: 80, height: 50)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                if item.status == .downloading {
-                    Color.black.opacity(0.4)
-                    ProgressView()
-                        .tint(.white)
-                        .scaleEffect(0.7)
-                } else if item.status == .completed {
-                    Color.black.opacity(0.3)
-                    Image(systemName: "play.fill")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.animeTitle)
+                        .font(.caption)
+                        .fontWeight(.semibold)
                         .foregroundColor(.white)
+                        .lineLimit(1)
+                    Text("Episode \(item.episodeNumber)")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                        .fontWeight(.bold)
+
+                    if item.status == .downloading {
+                        ProgressView(value: item.progress)
+                            .tint(.orange)
+                            .scaleEffect(y: 0.6)
+                            .padding(.top, 4)
+                        Text("\(Int(item.progress * 100))%")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                    } else if item.status == .completed {
+                        Text("Downloaded")
+                            .font(.caption2)
+                            .foregroundColor(.green)
+                    } else if item.status == .failed {
+                        Text("Failed")
+                            .font(.caption2)
+                            .foregroundColor(.red)
+                    }
+                }
+
+                Spacer()
+
+                Button {
+                    if item.status == .downloading {
+                        manager.cancelDownload(id: item.id)
+                    } else {
+                        manager.deleteDownload(id: item.id)
+                    }
+                } label: {
+                    Image(systemName: item.status == .downloading ? "xmark.circle.fill" : "trash.fill")
+                        .foregroundColor(.gray)
                         .font(.caption)
                 }
             }
+            .padding(10)
+            .background(Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+    }
+}
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.animeTitle)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                Text("Episode \(item.episodeNumber)")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-                    .fontWeight(.bold)
+struct LocalPlayerView: View {
+    let url: URL
+    let title: String
+    @State private var player = AVPlayer()
+    @Environment(\.dismiss) private var dismiss
 
-                if item.status == .downloading {
-                    ProgressView(value: item.progress)
-                        .tint(.orange)
-                        .scaleEffect(y: 0.6)
-                        .padding(.top, 4)
-                    Text("\(Int(item.progress * 100))%")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                } else if item.status == .completed {
-                    Text("Downloaded")
-                        .font(.caption2)
-                        .foregroundColor(.green)
-                } else if item.status == .failed {
-                    Text("Failed")
-                        .font(.caption2)
-                        .foregroundColor(.red)
+    var body: some View {
+        ZStack {
+            VideoPlayer(player: player)
+                .ignoresSafeArea()
+            VStack {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Color.black.opacity(0.4))
+                            .clipShape(Circle())
+                    }
+                    .padding()
+                    Spacer()
                 }
-            }
-
-            Spacer()
-
-            Button {
-                if item.status == .downloading {
-                    manager.cancelDownload(id: item.id)
-                } else {
-                    manager.deleteDownload(id: item.id)
-                }
-            } label: {
-                Image(systemName: item.status == .downloading ? "xmark.circle.fill" : "trash.fill")
-                    .foregroundColor(.gray)
-                    .font(.caption)
+                Spacer()
             }
         }
-        .padding(10)
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Color.black)
+        .onAppear {
+            player.replaceCurrentItem(with: AVPlayerItem(url: url))
+            player.play()
+        }
+        .onDisappear { player.pause() }
     }
 }
