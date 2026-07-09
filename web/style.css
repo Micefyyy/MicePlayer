@@ -190,4 +190,13 @@ body>*:first-child{width:100%}
   .carousel .info .title{font-size:1.1rem}
   .carousel .info .desc{display:none}
   .carousel .act-btn{padding:.5rem .65rem;font-size:.75rem}
+  .navbar{gap:.15rem}
+  .nav-btn{font-size:.72rem;padding:0 .35rem;height:1.6rem}
+  .navbar .logo{font-size:1rem}
+}
+/* Safe area support */
+@supports(padding-top:env(safe-area-inset-top)){
+  .navbar{padding-top:calc(.4rem + env(safe-area-inset-top))}
+  .page{padding-top:calc(3.8rem + env(safe-area-inset-top))}
+  .page{padding-bottom:env(safe-area-inset-bottom)}
 }
