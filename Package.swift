@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "AnimePlayer",
+    name: "MicePlayer",
     platforms: [.iOS(.v17)],
     products: [],
     targets: []

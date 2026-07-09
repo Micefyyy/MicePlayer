@@ -7,20 +7,30 @@ struct AnimeDetailView: View {
     @State private var isBookmarked = false
     @State private var lastWatchedEp: Int?
 
+    private let accent = Color(hex: "b5a8ff")
+    private let bg = Color(hex: "0a0a0a")
+    private let cardBg = Color(hex: "131313")
+    private let muted = Color(hex: "606060")
+    private let textColor = Color(hex: "e0e0e0")
+    private let borderColor = Color.white.opacity(0.08)
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 heroSection
-                infoSection
-                actionBar
-                synopsisSection
-                metadataSection
-                episodesSection
+                VStack(alignment: .leading, spacing: 16) {
+                    infoSection
+                    actionBar
+                    synopsisSection
+                    metadataSection
+                    episodesSection
+                }
+                .padding(.horizontal, 12)
             }
         }
-        .background(Color.black)
-        .navigationTitle("")
+        .background(bg)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .task { await loadData() }
         .onAppear {
             isBookmarked = PersistenceManager.shared.isBookmarked(anime.id)
@@ -31,198 +41,163 @@ struct AnimeDetailView: View {
     private var heroSection: some View {
         ZStack(alignment: .top) {
             AsyncImage(url: URL(string: anime.coverImageLarge ?? "")) { phase in
-                switch phase {
-                case .success(let image):
+                if let image = phase.image {
                     image.resizable().aspectRatio(contentMode: .fill)
-                default:
-                    Color(.systemGray5)
+                } else {
+                    cardBg
                 }
             }
-            .frame(height: 280)
+            .frame(height: 260)
             .clipped()
 
-            LinearGradient(
-                gradient: Gradient(colors: [.black.opacity(0.6), .clear, .black]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            LinearGradient(colors: [.black.opacity(0.6), .clear, bg], startPoint: .top, endPoint: .bottom)
+                .frame(height: 260)
         }
     }
 
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(anime.displayTitle)
-                .font(.title2)
-                .fontWeight(.black)
-                .foregroundColor(.white)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(textColor)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 if let score = anime.score {
-                    Label(String(format: "%.1f", score), systemImage: "star.fill")
-                        .foregroundColor(.yellow)
-                        .font(.subheadline)
-                        .fontWeight(.bold)
+                    HStack(spacing: 3) {
+                        Image(systemName: "star.fill").font(.system(size: 11)).foregroundColor(.yellow)
+                        Text(String(format: "%.1f", score)).font(.system(size: 13, weight: .bold)).foregroundColor(.yellow)
+                    }
                 }
                 if let year = anime.year {
-                    Text("\(year)")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                    Text("\(year)").font(.system(size: 13)).foregroundColor(muted)
                 }
                 if let episodes = anime.episodes {
-                    Text("\(episodes) eps")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                    Text("\(episodes) eps").font(.system(size: 13)).foregroundColor(muted)
                 }
                 if let status = anime.status {
                     Text(status.replacingOccurrences(of: "_", with: " ").capitalized)
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundColor(status == "RELEASING" ? .green : .gray)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(status == "RELEASING" ? .green : muted)
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(status == "RELEASING" ? Color.green.opacity(0.15) : Color.gray.opacity(0.15))
-                        .clipShape(Capsule())
+                        .padding(.vertical, 3)
+                        .background((status == "RELEASING" ? Color.green : muted).opacity(0.12))
+                        .cornerRadius(8)
                 }
             }
 
-            if let genres = anime.genres {
+            if let genres = anime.genres, !genres.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 5) {
                         ForEach(genres, id: \.self) { genre in
                             Text(genre)
-                                .font(.caption2)
-                                .fontWeight(.bold)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundColor(accent)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 4)
-                                .background(Color.orange.opacity(0.15))
-                                .foregroundColor(.orange)
-                                .clipShape(Capsule())
+                                .background(accent.opacity(0.1))
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(accent.opacity(0.25)))
+                                .cornerRadius(10)
                         }
                     }
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 16)
     }
 
     private var actionBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             NavigationLink(destination: PlaybackView(
                 animeId: anime.id,
                 episodeNumber: lastWatchedEp ?? 1,
-                title: "\(anime.displayTitle)",
+                title: anime.displayTitle,
                 animeImage: anime.coverImageMedium
             )) {
-                HStack {
-                    Image(systemName: "play.fill")
+                HStack(spacing: 6) {
+                    Image(systemName: "play.fill").font(.system(size: 13))
                     Text(lastWatchedEp != nil ? "Continue Ep. \(lastWatchedEp!)" : "Start Watching")
-                        .fontWeight(.black)
+                        .font(.system(size: 14, weight: .bold))
                 }
-                .font(.subheadline)
-                .foregroundColor(.black)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.orange)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .padding(.vertical, 13)
+                .background(accent)
+                .cornerRadius(10)
             }
             .buttonStyle(.plain)
 
             Button {
                 isBookmarked = PersistenceManager.shared.toggleBookmark(anime)
+                NotificationCenter.default.post(name: Notification.Name("bookmarksChanged"), object: nil)
             } label: {
                 Image(systemName: isBookmarked ? "heart.fill" : "heart")
-                    .font(.title3)
-                    .foregroundColor(isBookmarked ? .red : .gray)
-                    .frame(width: 48, height: 48)
-                    .background(Color.white.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .font(.system(size: 16))
+                    .foregroundColor(isBookmarked ? accent : muted)
+                    .frame(width: 46, height: 46)
+                    .background(cardBg)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(borderColor))
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 16)
     }
 
     private var synopsisSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Synopsis")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(textColor)
             Text(anime.synopsis ?? "No synopsis available.")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-                .lineLimit(nil)
+                .font(.system(size: 13))
+                .foregroundColor(muted)
+                .lineSpacing(4)
         }
-        .padding(.horizontal)
-        .padding(.top, 24)
     }
 
     private var metadataSection: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 20) {
             if let studio = anime.studio {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Studio")
-                        .font(.caption2)
-                        .fontWeight(.black)
-                        .foregroundColor(.gray)
-                    Text(studio)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                    Text("Studio").font(.system(size: 10, weight: .bold)).foregroundColor(muted)
+                    Text(studio).font(.system(size: 12, weight: .medium)).foregroundColor(textColor)
                 }
             }
             if let season = anime.season, let year = anime.year {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Season")
-                        .font(.caption2)
-                        .fontWeight(.black)
-                        .foregroundColor(.gray)
-                    Text("\(season.capitalized) \(year)")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                    Text("Season").font(.system(size: 10, weight: .bold)).foregroundColor(muted)
+                    Text("\(season.capitalized) \(year)").font(.system(size: 12, weight: .medium)).foregroundColor(textColor)
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 16)
+        .padding(.vertical, 4)
     }
 
     private var episodesSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Episodes")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.horizontal)
-                .padding(.top, 16)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(textColor)
+                .padding(.top, 4)
 
             if isLoading {
-                ProgressView()
-                    .tint(.orange)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                ProgressView().tint(accent).frame(maxWidth: .infinity).padding(.vertical, 30)
             } else if episodes.isEmpty {
                 Text("No episodes available")
-                    .foregroundColor(.gray)
+                    .font(.system(size: 13))
+                    .foregroundColor(muted)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(episodes) { ep in
-                            NavigationLink(destination: PlaybackView(
-                                animeId: anime.id,
-                                episodeNumber: ep.number,
-                                title: "\(anime.displayTitle)",
-                                animeImage: anime.coverImageMedium
-                            )) {
-                            EpisodeRow(episode: ep, isCurrent: lastWatchedEp == ep.number)
+                        NavigationLink(destination: PlaybackView(
+                            animeId: anime.id,
+                            episodeNumber: ep.number,
+                            title: anime.displayTitle,
+                            animeImage: anime.coverImageMedium
+                        )) {
+                            EpisodeRow(episode: ep, isCurrent: lastWatchedEp == ep.number, accent: accent, muted: muted, textColor: textColor, cardBg: cardBg)
                         }
                         .buttonStyle(.plain)
-                        Divider()
-                            .background(Color.white.opacity(0.05))
-                            .padding(.leading, 60)
+                        Divider().background(borderColor).padding(.leading, 56)
                     }
                 }
                 .padding(.bottom, 24)
@@ -241,59 +216,57 @@ struct AnimeDetailView: View {
 struct EpisodeRow: View {
     let episode: Episode
     var isCurrent: Bool = false
+    let accent: Color
+    let muted: Color
+    let textColor: Color
+    let cardBg: Color
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             ZStack {
                 AsyncImage(url: URL(string: episode.thumbnail ?? "")) { phase in
-                    switch phase {
-                    case .success(let image):
+                    if let image = phase.image {
                         image.resizable().aspectRatio(contentMode: .fill)
-                    default:
-                        Color(.systemGray5)
+                    } else {
+                        cardBg
                     }
                 }
-                .frame(width: 100, height: 56)
+                .frame(width: 90, height: 52)
                 .clipped()
 
                 if isCurrent {
-                    Color.black.opacity(0.3)
-                    Image(systemName: "play.fill")
-                        .foregroundColor(.white)
-                        .font(.caption)
+                    Color.black.opacity(0.35)
+                    Image(systemName: "play.fill").font(.system(size: 12)).foregroundColor(.white)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .cornerRadius(6)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Episode \(episode.number)")
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundColor(isCurrent ? .orange : .white)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(isCurrent ? accent : textColor)
                 if let title = episode.title {
                     Text(title)
-                        .font(.caption)
-                        .foregroundColor(.gray)
+                        .font(.system(size: 11))
+                        .foregroundColor(muted)
                         .lineLimit(1)
                 }
                 if let duration = episode.duration {
-                    let minutes = duration / 60
-                    let secs = duration % 60
-                    Text("\(minutes):\(String(format: "%02d", secs))")
-                        .font(.caption2)
-                        .foregroundColor(.gray.opacity(0.6))
+                    Text("\(duration / 60):\(String(format: "%02d", duration % 60))")
+                        .font(.system(size: 10))
+                        .foregroundColor(muted.opacity(0.6))
                 }
             }
 
             Spacer()
 
             Image(systemName: "play.circle")
-                .foregroundColor(isCurrent ? .orange : .gray.opacity(0.5))
-                .font(.title3)
+                .font(.system(size: 16))
+                .foregroundColor(isCurrent ? accent : muted.opacity(0.4))
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 4)
         .padding(.vertical, 8)
-        .background(isCurrent ? Color.orange.opacity(0.05) : Color.clear)
+        .background(isCurrent ? accent.opacity(0.05) : Color.clear)
         .contentShape(Rectangle())
     }
 }

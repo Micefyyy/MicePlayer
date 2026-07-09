@@ -9,6 +9,12 @@ struct DiscoverView: View {
     @State private var categoryData: [Category: [Anime]] = [:]
     @State private var catLoading = true
 
+    private let accent = Color(hex: "b5a8ff")
+    private let bg = Color(hex: "0a0a0a")
+    private let muted = Color(hex: "606060")
+    private let textColor = Color(hex: "e0e0e0")
+    private let borderColor = Color.white.opacity(0.08)
+
     enum Category: String, CaseIterable {
         case seasonal = "Seasonal"
         case trending = "Trending"
@@ -20,7 +26,6 @@ struct DiscoverView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 16) {
                     searchBar
-
                     if hasSearched {
                         if results.isEmpty && !isLoading {
                             noResultsView
@@ -30,30 +35,29 @@ struct DiscoverView: View {
                     } else {
                         categoryPicker
                         if catLoading {
-                            ProgressView()
-                                .tint(.orange)
-                                .padding(.top, 40)
+                            ProgressView().tint(accent).padding(.top, 40)
                         } else {
                             categoryGrid
                         }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 10)
             }
-            .background(Color.black)
-            .navigationTitle("Discover")
+            .background(bg)
+            .navigationBarHidden(true)
             .task { await loadCategories() }
         }
     }
 
     private var searchBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
+                .font(.system(size: 14))
+                .foregroundColor(muted)
             TextField("Search anime...", text: $searchQuery)
-                .textFieldStyle(.plain)
+                .font(.system(size: 14))
                 .autocorrectionDisabled()
-                .foregroundColor(.white)
+                .foregroundColor(textColor)
                 .onSubmit { performSearch() }
             if !searchQuery.isEmpty {
                 Button {
@@ -62,20 +66,22 @@ struct DiscoverView: View {
                     hasSearched = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
+                        .font(.system(size: 14))
+                        .foregroundColor(muted)
                 }
             }
         }
-        .padding(12)
-        .background(Color.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(10)
+        .background(Color(hex: "131313"))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderColor))
     }
 
     private var resultsGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 14) {
             ForEach(results) { anime in
                 NavigationLink(destination: AnimeDetailView(anime: anime)) {
-                    GlassCardView(anime: anime)
+                    CardView(anime: anime, accent: accent, muted: muted, cardBg: Color(hex: "131313"), textColor: textColor, borderColor: borderColor)
                 }
                 .buttonStyle(.plain)
             }
@@ -83,16 +89,16 @@ struct DiscoverView: View {
     }
 
     private var noResultsView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 40))
-                .foregroundColor(.gray)
+                .font(.system(size: 36))
+                .foregroundColor(muted)
             Text("No results found")
-                .font(.headline)
-                .foregroundColor(.gray)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(muted)
             Text("Try a different search term")
-                .font(.caption)
-                .foregroundColor(.gray.opacity(0.6))
+                .font(.system(size: 13))
+                .foregroundColor(muted.opacity(0.6))
         }
         .padding(.top, 60)
     }
@@ -104,25 +110,25 @@ struct DiscoverView: View {
                     category = cat
                 } label: {
                     Text(cat.rawValue)
-                        .font(.subheadline)
-                        .fontWeight(.bold)
-                        .padding(.vertical, 10)
+                        .font(.system(size: 13, weight: .medium))
+                        .padding(.vertical, 9)
                         .frame(maxWidth: .infinity)
-                        .background(category == cat ? Color.orange : Color.clear)
-                        .foregroundColor(category == cat ? .black : .gray)
+                        .background(category == cat ? accent : Color.clear)
+                        .foregroundColor(category == cat ? .white : muted)
                 }
             }
         }
-        .background(Color.white.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(Color(hex: "131313"))
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(borderColor))
     }
 
     private var categoryGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 14) {
             if let items = categoryData[category] {
-                ForEach(items.prefix(12)) { anime in
+                ForEach(items.prefix(18)) { anime in
                     NavigationLink(destination: AnimeDetailView(anime: anime)) {
-                        GlassCardView(anime: anime)
+                        CardView(anime: anime, accent: accent, muted: muted, cardBg: Color(hex: "131313"), textColor: textColor, borderColor: borderColor)
                     }
                     .buttonStyle(.plain)
                 }
