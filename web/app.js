@@ -583,7 +583,7 @@ function handleRoute() {
     if (watchMatch) {
         const animeId = parseInt(watchMatch[1]);
         const epNum = parseInt(watchMatch[2]);
-        openPlayer(animeId, epNum, "", "");
+        openPlayer(animeId, epNum, "", "", true);
         return;
     }
     const tabs = ["home", "discover", "library", "settings"];
