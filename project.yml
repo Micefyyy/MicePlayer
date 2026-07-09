@@ -1,6 +1,6 @@
-name: MicePlayer
+name: AnimePlayer
 options:
-  bundleIdPrefix: com.miceplayer
+  bundleIdPrefix: com.animeplayer
   deploymentTarget:
     iOS: "17.0"
 
@@ -24,7 +24,7 @@ targets:
       - path: Sources/AnimePlayer
     settings:
       base:
-        PRODUCT_NAME: MicePlayer
+        PRODUCT_NAME: AnimePlayer
         INFOPLIST_FILE: Sources/AnimePlayer/Info.plist
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
     info:
