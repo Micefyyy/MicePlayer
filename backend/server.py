@@ -393,7 +393,7 @@ async def proxy_stream(request: Request, url: str):
                 uri_match = re.search(r'URI="([^"]+)"', stripped)
                 if uri_match:
                     absolute = urljoin(base_url, uri_match.group(1))
-                    rewritten.append(stripped.replace(uri_match.group(1), f"/proxy?url={quote(absolute, safe='')}")
+                    rewritten.append(stripped.replace(uri_match.group(1), f"/proxy?url={quote(absolute, safe='')}"))
                 else:
                     rewritten.append(stripped)
             else:
