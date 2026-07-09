@@ -456,6 +456,18 @@ async def serve_web_static(file_path: str):
     raise HTTPException(404, "File not found")
 
 
+@app.get("/{path:path}")
+async def serve_spa_fallback(path: str):
+    if path.startswith("api/") or path == "favicon.ico":
+        raise HTTPException(404)
+    index = WEB_DIR / "index.html"
+    if index.exists():
+        resp = FileResponse(str(index), media_type="text/html")
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp
+    raise HTTPException(404)
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
