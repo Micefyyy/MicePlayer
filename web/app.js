@@ -21,6 +21,7 @@ function switchTab(btn) {
     btn.classList.add("active");
     const tab = btn.dataset.tab;
     showPage(tab);
+    history.pushState({ tab }, "", "/" + tab);
 }
 
 function showPage(name) {
@@ -41,6 +42,7 @@ function goHome() {
     currentEpisode = null;
     showPage("home");
     document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "home"));
+    history.pushState({ tab: "home" }, "", "/");
 }
 
 async function api(path) {
@@ -317,7 +319,7 @@ function loadStream(manifestUrl) {
     setupPlyr(video);
 }
 
-async function openPlayer(animeId, epNum, title, image) {
+async function openPlayer(animeId, epNum, title, image, replaceState) {
     destroyPlayer();
     epGridOffset = 0;
     const el = document.getElementById("page-player");
@@ -344,7 +346,15 @@ async function openPlayer(animeId, epNum, title, image) {
     const currentEp = playerEpisodes.find(e => e.number === epNum);
     const epTitle = currentEp ? (currentEp.title || "Episode " + epNum) : "Episode " + epNum;
     const an = currentAnime;
+    const anTitle = an.title_english || an.title_romaji || title;
     const ci = an.cover_image_medium || an.cover_image_large || image || "";
+
+    const url = "/watch/" + animeId + "/" + epNum;
+    if (replaceState) {
+        history.replaceState({ player: true, animeId, epNum, title: anTitle, image: ci }, "", url);
+    } else {
+        history.pushState({ player: true, animeId, epNum, title: anTitle, image: ci }, "", url);
+    }
     const score = an.score ? `\u2605 ${(an.score/10).toFixed(1)}` : "";
     const genres = (Array.isArray(an.genres) ? an.genres : (an.genres||"").split(" ")).filter(Boolean).map(g => `<span class="genre">${g}</span>`).join("");
     const bookmarks = getBookmarks();
@@ -356,7 +366,7 @@ async function openPlayer(animeId, epNum, title, image) {
                         <button class="back-btn" onclick="closePlayer()">
                             <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
                         </button>
-                        <span class="ep-title">${esc(title)} - ${esc(epTitle)}</span>
+                        <span class="ep-title">${esc(anTitle)} - ${esc(epTitle)}</span>
                         <div class="header-audio-toggle" id="headerAudioToggle">
                             <button class="audio-btn sub-btn ${!prefs.showDub ? 'active' : ''}">SUB</button>
                             <button class="audio-btn dub-btn ${prefs.showDub ? 'active' : ''}">DUB</button>
@@ -398,16 +408,16 @@ async function openPlayer(animeId, epNum, title, image) {
                     ${playerEpisodes.length > 25 ? `
                     <div class="ep-pager">
                         <div class="ep-pager-controls">
-                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}',${epNum},-100)">-100</button>
-                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}',${epNum},-10">-10</button>
+                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}',${epNum},-100)">-100</button>
+                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}',${epNum},-10">-10</button>
                             <span class="ep-pager-label" id="epPagerLabel"></span>
-                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}',${epNum},10)">+10</button>
-                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}',${epNum},100)">+100</button>
+                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}',${epNum},10)">+10</button>
+                            <button class="ep-pager-btn" onclick="episodePageJump(${animeId},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}',${epNum},100)">+100</button>
                         </div>
                         <div class="ep-grid" id="epGrid"></div>
                     </div>` : `
                     <div class="episode-list">
-                        ${playerEpisodes.map(ep => `<div class="episode-row${ep.number===epNum?' current':''}" onclick="openPlayer(${animeId},${ep.number},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}')"><div class="episode-num">${ep.number}</div><div class="episode-info"><div class="ep-title">${esc(ep.title || "Episode " + ep.number)}</div></div></div>`).join("")}
+                        ${playerEpisodes.map(ep => `<div class="episode-row${ep.number===epNum?' current':''}" onclick="openPlayer(${animeId},${ep.number},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}')"><div class="episode-num">${ep.number}</div><div class="episode-info"><div class="ep-title">${esc(ep.title || "Episode " + ep.number)}</div></div></div>`).join("")}
                     </div>`}
                 </div>
             </div>
@@ -419,7 +429,7 @@ async function openPlayer(animeId, epNum, title, image) {
     if (dubBtn) { dubBtn.addEventListener("click", (e) => { e.stopPropagation(); switchAudio(true); }); }
 
     if (playerEpisodes.length > 25) {
-        renderEpGrid(animeId, epNum, title, image);
+        renderEpGrid(animeId, epNum, anTitle, ci);
     }
 
     try {
@@ -435,9 +445,9 @@ async function openPlayer(animeId, epNum, title, image) {
         loadStream(url);
         document.getElementById("videoPlayer").addEventListener("ended", () => {
             if (getPrefs().autoPlay && playerEpisodes.some(e => e.number === epNum + 1))
-                openPlayer(animeId, epNum + 1, title, image);
+                openPlayer(animeId, epNum + 1, anTitle, ci);
         }, { once: true });
-        saveProgressEntry(animeId, title, image, epNum);
+        saveProgressEntry(animeId, anTitle, ci, epNum);
 
         if (playerEpisodes.every(e => e.title.startsWith("Episode "))) {
             setTimeout(async () => {
@@ -447,12 +457,12 @@ async function openPlayer(animeId, epNum, title, image) {
                         playerEpisodes = freshEps;
                         if (currentEpisode && currentEpisode.animeId === animeId) {
                             if (playerEpisodes.length > 25) {
-                                renderEpGrid(animeId, currentEpisode.episodeNumber, title, image);
+                                renderEpGrid(animeId, currentEpisode.episodeNumber, anTitle, ci);
                             } else {
                                 const listEl = document.querySelector(".episode-list");
                                 if (listEl) {
                                     const current = currentEpisode.episodeNumber;
-                                    listEl.innerHTML = playerEpisodes.map(ep => `<div class="episode-row${ep.number===current?' current':''}" onclick="openPlayer(${animeId},${ep.number},'${esc(title).replace(/'/g,"\\'")}','${(image||"").replace(/'/g,"\\'")}')"><div class="episode-num">${ep.number}</div><div class="episode-info"><div class="ep-title">${esc(ep.title || "Episode " + ep.number)}</div></div></div>`).join("");
+                                    listEl.innerHTML = playerEpisodes.map(ep => `<div class="episode-row${ep.number===current?' current':''}" onclick="openPlayer(${animeId},${ep.number},'${esc(anTitle).replace(/'/g,"\\'")}','${(ci||"").replace(/'/g,"\\'")}')"><div class="episode-num">${ep.number}</div><div class="episode-info"><div class="ep-title">${esc(ep.title || "Episode " + ep.number)}</div></div></div>`).join("");
                                 }
                             }
                         }
@@ -538,6 +548,7 @@ function closePlayer() {
     currentEpisode = null;
     document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
     document.getElementById("page-" + currentTab).classList.add("active");
+    history.pushState({ tab: currentTab }, "", "/" + currentTab);
 }
 
 function saveProgressEntry(animeId, title, image, epNum) {
@@ -566,4 +577,42 @@ function toggleSetting(el, key) { const p = getPrefs(); p[key] = !p[key]; savePr
 function updatePref(key, val) { const p = getPrefs(); p[key] = val; savePrefs(p); }
 function showToast(msg) { const t = document.querySelector(".toast"); if (t) { t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2000); } }
 
-loadHome();
+function handleRoute() {
+    const path = window.location.pathname;
+    const watchMatch = path.match(/^\/watch\/(\d+)\/(\d+)/);
+    if (watchMatch) {
+        const animeId = parseInt(watchMatch[1]);
+        const epNum = parseInt(watchMatch[2]);
+        openPlayer(animeId, epNum, "", "");
+        return;
+    }
+    const tabs = ["home", "discover", "library", "settings"];
+    const tabPath = path.replace(/^\//, "");
+    if (tabs.includes(tabPath)) {
+        const btn = document.querySelector(`.nav-btn[data-tab="${tabPath}"]`);
+        if (btn) btn.classList.add("active");
+        showPage(tabPath);
+        return;
+    }
+    showPage("home");
+    document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === "home"));
+}
+
+window.addEventListener("popstate", (e) => {
+    if (e.state && e.state.player) {
+        openPlayer(e.state.animeId, e.state.epNum, e.state.title || "", e.state.image || "", true);
+    } else if (e.state && e.state.tab) {
+        destroyPlayer();
+        currentAnime = null;
+        playerEpisodes = [];
+        streamDataCache = {};
+        currentEpisode = null;
+        const btn = document.querySelector(`.nav-btn[data-tab="${e.state.tab}"]`);
+        if (btn) btn.classList.add("active");
+        showPage(e.state.tab);
+    } else {
+        handleRoute();
+    }
+});
+
+handleRoute();
