@@ -21,25 +21,27 @@ struct ContentView: View {
     @State private var showDownloads = false
 
     var body: some View {
-        ZStack {
-            Color(hex: "0A0A0C").ignoresSafeArea()
-            WebView(url: URL(string: "https://miceplayer.onrender.com/web/")!)
+        GeometryReader { geo in
+            ZStack {
+                Color(hex: "0A0A0C")
+                WebView(url: URL(string: "https://miceplayer.onrender.com/web/")!, frame: CGRect(origin: .zero, size: geo.size))
+                    .allowsHitTesting(true)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    showDownloads = true
+                } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(Color(hex: "14552D"))
+                        .shadow(color: .black.opacity(0.4), radius: 4)
+                }
+                .padding(.trailing, 16)
+                .padding(.bottom, 20)
+            }
         }
         .ignoresSafeArea()
         .preferredColorScheme(.dark)
-        .overlay(alignment: .bottomTrailing) {
-            Button {
-                showDownloads = true
-            } label: {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(Color(hex: "14552D"))
-                    .background(Circle().fill(Color(hex: "0A0A0C")).frame(width: 36, height: 36))
-                    .shadow(color: .black.opacity(0.4), radius: 4)
-            }
-            .padding(.trailing, 16)
-            .padding(.bottom, 20)
-        }
         .sheet(isPresented: $showDownloads) {
             DownloadsView()
         }
@@ -49,39 +51,17 @@ struct ContentView: View {
     }
 }
 
-struct WebView: UIViewControllerRepresentable {
+struct WebView: UIViewRepresentable {
     let url: URL
+    let frame: CGRect
 
-    func makeUIViewController(context: Context) -> WebViewContainer {
-        let container = WebViewContainer()
-        container.load(url: url)
-        return container
-    }
-
-    func updateUIViewController(_ uiViewController: WebViewContainer, context: Context) {}
-}
-
-class WebViewContainer: UIViewController {
-    private var webView: WKWebView?
-    private var url: URL?
-
-    func load(url: URL) {
-        self.url = url
-        if isViewLoaded { startLoad() }
-    }
-
-    private func startLoad() {
-        guard let url = url else { return }
-        webView?.load(URLRequest(url: url))
-    }
-
-    override func loadView() {
+    func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
 
         let contentController = WKUserContentController()
-        contentController.add(MessageHandler(), name: "micePlayer")
+        contentController.add(context.coordinator, name: "micePlayer")
         let fsScript = WKUserScript(source: """
         if (HTMLVideoElement.prototype.webkitEnterFullscreen) {
             HTMLVideoElement.prototype.requestFullscreen = function() {
@@ -93,34 +73,33 @@ class WebViewContainer: UIViewController {
         contentController.addUserScript(fsScript)
         config.userContentController = contentController
 
-        let wv = WKWebView(frame: .zero, configuration: config)
-        wv.translatesAutoresizingMaskIntoConstraints = false
-        wv.isOpaque = false
-        wv.backgroundColor = UIColor(red: 10/255, green: 10/255, blue: 12/255, alpha: 1)
-        wv.scrollView.contentInsetAdjustmentBehavior = .never
-        wv.scrollView.bounces = false
-        webView = wv
-
-        view = UIView()
-        view.addSubview(wv)
-        NSLayoutConstraint.activate([
-            wv.topAnchor.constraint(equalTo: view.topAnchor),
-            wv.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            wv.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            wv.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
+        let webView = WKWebView(frame: frame, configuration: config)
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.isOpaque = false
+        webView.backgroundColor = UIColor(red: 10/255, green: 10/255, blue: 12/255, alpha: 1)
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.bounces = false
+        webView.scrollView.contentInset = .zero
+        webView.scrollView.scrollIndicatorInsets = .zero
+        webView.load(URLRequest(url: url))
+        return webView
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        startLoad()
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if webView.frame != frame {
+            webView.frame = frame
+        }
     }
-}
 
-class MessageHandler: NSObject, WKScriptMessageHandler {
-    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        if message.name == "micePlayer" {
-            print("JS message:", message.body)
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator: NSObject, WKScriptMessageHandler {
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "micePlayer" {
+                print("JS message:", message.body)
+            }
         }
     }
 }
