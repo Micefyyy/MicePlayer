@@ -291,15 +291,29 @@ function setQuality(height) {
 function setupPlyr(video) {
     if (plyrInstance) { try { plyrInstance.destroy(); } catch(e) {} plyrInstance = null; }
     try {
+        const useNativeFs = !!video.webkitEnterFullscreen;
         plyrInstance = new Plyr(video, {
             display: 'block',
-            controls: ['play-large','play','progress','current-time','duration','mute','volume','settings','fullscreen'],
+            controls: ['play-large','play','progress','current-time','duration','mute','volume','settings', ...(useNativeFs ? [] : ['fullscreen'])],
             settings: ['speed'],
             speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
             tooltips: { controls: false, seek: false },
             keyboard: { focused: true, global: false },
         });
+        if (useNativeFs) {
+            video.addEventListener('webkitbeginfullscreen', () => {
+                if (plyrInstance) plyrInstance.pause();
+            });
+            video.addEventListener('webkitendfullscreen', () => {
+                if (plyrInstance) plyrInstance.play();
+            });
+        }
     } catch(e) { console.error("Plyr error:", e); }
+}
+
+function enterNativeFs() {
+    const video = document.getElementById("videoPlayer");
+    if (video && video.webkitEnterFullscreen) video.webkitEnterFullscreen();
 }
 
 function loadStream(manifestUrl) {
@@ -379,6 +393,9 @@ async function openPlayer(animeId, epNum, title, image, replaceState) {
                         <span>Loading stream...</span>
                     </div>
                     <video id="videoPlayer" playsinline></video>
+                    <button class="native-fs-btn" id="nativeFsBtn" onclick="enterNativeFs()">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                    </button>
                     <div class="plyr-quality-wrap"><select id="qualitySelect" class="plyr-quality-select"><option value="-1">Auto</option></select></div>
                 </div>
                 <div class="player-sidebar">
