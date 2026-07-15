@@ -34,8 +34,8 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "arrow.down.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundColor(Color(hex: "b5a8ff"))
-                            .background(Circle().fill(Color(hex: "0a0a0a")).frame(width: 36, height: 36))
+                            .foregroundColor(Color(hex: "14552D"))
+                            .background(Circle().fill(Color(hex: "0A0A0C")).frame(width: 36, height: 36))
                             .shadow(color: .black.opacity(0.4), radius: 4)
                     }
                     .padding(.trailing, 16)
@@ -71,7 +71,7 @@ struct WebView: UIViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
-        webView.backgroundColor = UIColor(Color(hex: "0a0a0a"))
+        webView.backgroundColor = UIColor(Color(hex: "0A0A0C"))
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.load(URLRequest(url: url))
         return webView
