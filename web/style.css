@@ -185,7 +185,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
   .carousel .actions{right:1rem;bottom:1rem}
 }
 @media(max-width:500px){
-  .page{padding:3.6rem .4rem 0}
+  .page{padding:3.6rem 0 0}
   .carousel{height:16rem;border-radius:var(--radius)}
   .carousel .info .title{font-size:1rem}
   .carousel .info .desc{display:none}
@@ -193,10 +193,4 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
   .navbar{gap:.1rem}
   .nav-btn{font-size:.68rem;padding:0 .3rem;height:1.5rem}
   .navbar .logo{font-size:.95rem}
-}
-/* Safe area support */
-@supports(padding-top:env(safe-area-inset-top)){
-  .navbar{padding-top:calc(.4rem + env(safe-area-inset-top))}
-  .page{padding-top:calc(3.6rem + env(safe-area-inset-top))}
-  .page{padding-bottom:env(safe-area-inset-bottom)}
 }

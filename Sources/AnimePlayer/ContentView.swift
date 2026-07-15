@@ -21,35 +21,28 @@ struct ContentView: View {
     @State private var showDownloads = false
 
     var body: some View {
-        ZStack {
-            WebView(url: URL(string: "https://miceplayer.onrender.com/web/")!)
-                .ignoresSafeArea()
-
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button {
-                        showDownloads = true
-                    } label: {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(Color(hex: "14552D"))
-                            .background(Circle().fill(Color(hex: "0A0A0C")).frame(width: 36, height: 36))
-                            .shadow(color: .black.opacity(0.4), radius: 4)
-                    }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 20)
+        WebView(url: URL(string: "https://miceplayer.onrender.com/web/")!)
+            .ignoresSafeArea()
+            .preferredColorScheme(.dark)
+            .overlay(alignment: .bottomTrailing) {
+                Button {
+                    showDownloads = true
+                } label: {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(Color(hex: "14552D"))
+                        .background(Circle().fill(Color(hex: "0A0A0C")).frame(width: 36, height: 36))
+                        .shadow(color: .black.opacity(0.4), radius: 4)
                 }
+                .padding(.trailing, 16)
+                .padding(.bottom, 20)
             }
-        }
-        .preferredColorScheme(.dark)
-        .sheet(isPresented: $showDownloads) {
-            DownloadsView()
-        }
-        .onAppear {
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        }
+            .sheet(isPresented: $showDownloads) {
+                DownloadsView()
+            }
+            .onAppear {
+                try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
+            }
     }
 }
 
@@ -67,12 +60,23 @@ struct WebView: UIViewRepresentable {
 
         let contentController = WKUserContentController()
         contentController.add(context.coordinator, name: "micePlayer")
+        let fsScript = WKUserScript(source: """
+        if (HTMLVideoElement.prototype.webkitEnterFullscreen) {
+            HTMLVideoElement.prototype.requestFullscreen = function() {
+                this.webkitEnterFullscreen();
+                return Promise.resolve();
+            };
+        }
+        """, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        contentController.addUserScript(fsScript)
         config.userContentController = contentController
 
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = WKWebView(frame: UIScreen.main.bounds, configuration: config)
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         webView.isOpaque = false
         webView.backgroundColor = UIColor(Color(hex: "0A0A0C"))
         webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.scrollView.bounces = false
         webView.load(URLRequest(url: url))
         return webView
     }
